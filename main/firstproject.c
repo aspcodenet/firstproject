@@ -1,33 +1,78 @@
 #include <stdio.h>
-#include "driver/gpio.h"
+#include <string.h>
+#include <stdlib.h>
+#include "esp_log.h"
+#include "nvs_flash.h"
+#include "esp_event.h"
+#include "esp_netif.h"
+
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"   
-// https://wokwi.com/projects/377761117596697601
+#include "freertos/task.h"
+#include "esp_system.h"
+
+#include "esp_http_client.h"
+#include "connect_wifi.h"
+
+static const char *TAG = "HTTP_CLIENT";
+
+char api_key[] = "RQZXY61HSJURBPZL";
+
+char message[] = "Hello This is a test message";
+
+void twilio_send_sms(void *pvParameters)
+{
+
+    char twilio_url[200];
+    snprintf(twilio_url,
+             sizeof(twilio_url),
+             "%s%s%s",
+             "https://api.thingspeak.com/update?api_key=",
+             api_key,
+             "&field1=22&field2=66");
+
+    esp_http_client_config_t config = {
+        .url = twilio_url,
+        .method = HTTP_METHOD_GET   };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    esp_http_client_set_header(client, "Content-Type", "application/x-www-form-urlencoded");
 
 
 
-#define LED1_PIN 2
-#define LED2_PIN 4
-#define LED3_PIN 13
+    esp_err_t err = esp_http_client_perform(client);
+
+    if (err == ESP_OK)
+    {
+        int status_code = esp_http_client_get_status_code(client);
+        if (status_code == 201)
+        {
+            ESP_LOGI(TAG, "Message sent Successfully");
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Message sent Failed");
+        }
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Message sent Failed");
+    }
+    esp_http_client_cleanup(client);
+    vTaskDelete(NULL);
+}
 
 void app_main(void)
 {
-    gpio_reset_pin(LED1_PIN);
-    gpio_set_direction(LED1_PIN, GPIO_MODE_OUTPUT);
-    gpio_reset_pin(LED2_PIN);
-    gpio_set_direction(LED2_PIN, GPIO_MODE_OUTPUT);
-    gpio_reset_pin(LED3_PIN);
-    gpio_set_direction(LED3_PIN, GPIO_MODE_OUTPUT);
-
-    while(1){
-        gpio_set_level(LED1_PIN,1 );
-        gpio_set_level(LED2_PIN,1 );
-        gpio_set_level(LED3_PIN,1 );
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        gpio_set_level(LED1_PIN,0 );
-        gpio_set_level(LED2_PIN,0 );
-        gpio_set_level(LED3_PIN,0 );
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-
+	esp_err_t ret = nvs_flash_init();
+	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+	{
+		ESP_ERROR_CHECK(nvs_flash_erase());
+		ret = nvs_flash_init();
+	}
+	ESP_ERROR_CHECK(ret);
+	connect_wifi();
+	if (wifi_connect_status)
+	{
+		xTaskCreate(twilio_send_sms, "twilio_send_sms", 8192, NULL, 6, NULL);
+	}
 }
