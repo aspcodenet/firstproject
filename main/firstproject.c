@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"   
 #include "esp_log.h"
+#include "esp_random.h"
 
 // https://wokwi.com/projects/378039853550046209
 
@@ -81,7 +82,9 @@ void app_main(void)
             vTaskDelay(20 / portTICK_PERIOD_MS);
             currentValue = gpio_get_level(BUTTON_PIN);
             if(currentValue == 0){
-                ESP_LOGE("main","Press");
+                int times = esp_random()%10 + 1;
+                int between = esp_random()%100;
+                ESP_LOGE("main","Press %d %d",times,between);
                 ledState = !ledState;
                 gpio_set_level(LED_PIN,ledState);
             }
