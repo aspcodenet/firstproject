@@ -2,6 +2,7 @@
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"   
+#include "freertos/queue.h"
 #include "esp_log.h"
 #include "esp_random.h"
 
@@ -11,6 +12,8 @@
 
 #define SEND_BUTTON_PIN 25
 #define RECEIVE_BUTTON_PIN 26
+
+QueueHandle_t  queue=NULL;
 
 int getTemperature(){
     ESP_LOGI("SEND", "Getting temp from sensor");
@@ -22,8 +25,9 @@ void receiveTask(){
     gpio_set_pull_mode(RECEIVE_BUTTON_PIN, GPIO_PULLUP_ONLY);
     int currentValue = gpio_get_level(RECEIVE_BUTTON_PIN);
     int lastValue = 0;
-
+    int temp;
      while(1){
+        
         lastValue = currentValue;
         //Check button
         currentValue = gpio_get_level(RECEIVE_BUTTON_PIN);
@@ -32,7 +36,9 @@ void receiveTask(){
             vTaskDelay(20 / portTICK_PERIOD_MS);
             currentValue = gpio_get_level(RECEIVE_BUTTON_PIN);
             if(currentValue == 0){
-                ESP_LOGE("RECEIVE","Press");
+                if(xQueueReceive(queue,&temp,(TickType_t )(1000/portTICK_PERIOD_MS)) == pdTRUE){
+                    ESP_LOGE("RECEIVE","Press %d", temp);
+                }
             }
         }
      }
@@ -58,6 +64,7 @@ void sendTask(){
                 //Get value
                 int temp = getTemperature();
                 ESP_LOGE("SEND","Press %d",  temp);
+                xQueueSend(queue,(void *)&temp,0); // a
             }
         }
      }
@@ -69,6 +76,7 @@ void sendTask(){
 
 void app_main(void)
 {
+    queue=xQueueCreate(20,sizeof(unsigned int));
     //gpio_set_direction(BUTTON_PIN, GPIO_MODE_INPUT_OUTPUT);
     //gpio_set_level(BUTTON_PIN,1 );
 
