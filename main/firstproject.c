@@ -44,7 +44,7 @@ void twilio_send_sms(void *pvParameters)
     if (err == ESP_OK)
     {
         int status_code = esp_http_client_get_status_code(client);
-        if (status_code == 201)
+        if (status_code == 200)
         {
             ESP_LOGI(TAG, "Message sent Successfully");
         }
