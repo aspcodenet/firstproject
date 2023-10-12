@@ -56,8 +56,8 @@ void sendTask(){
                 int temp = getTemperature();
                 ESP_LOGE("SEND","Press %d",  temp);
                 char text[20];
-                sprintf(text,"%d",temp);
-                int id = esp_mqtt_client_publish(client, TOPIC, text  , 0, 0, 0);
+                sprintf(text,"apa %d",temp);
+                int id = esp_mqtt_client_publish(client, TOPIC, text  , 0, 1, 0);
                 ESP_LOGE("SEND","ID %d",  id);
             }
         }
