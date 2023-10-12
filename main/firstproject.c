@@ -25,7 +25,7 @@ static const char *TAG = "mqttwss_example";
 #define CONFIG_BROKER_URI "mqtt://test.mosquitto.org"
 
 //#define CONFIG_BROKER_URI "mqtt://stefan.holmberg:testfeed@io.adafruit.com"
-#define TOPIC "stefanholmberg/feeds/testfeed"
+#define TOPIC "stefanholmberg/test123"
 
 
 
@@ -52,7 +52,7 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
 
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        msg_id = esp_mqtt_client_publish(client, TOPIC, "data", 0, 0, 0);
+        msg_id = esp_mqtt_client_publish(client, TOPIC, "data-jepp",0, 0, 1);
         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
@@ -112,6 +112,8 @@ void app_main(void)
 	connect_wifi();
 
     esp_event_loop_create_default();
-
     mqtt_app_start();
+    while(1){
+        vTaskDelay(10000);
+    }
 }
