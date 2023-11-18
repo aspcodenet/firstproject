@@ -18,10 +18,15 @@ static const char *TAG = "HTTP_CLIENT";
 char api_key[] = "RQZXY61HSJURBPZL";
 
 char message[] = "Hello This is a test message";
+//https://wokwi.com/projects/381723926056620033
 
-void twilio_send_sms(void *pvParameters)
-{
 
+
+#define OK_BUTTON_PIN 25
+#define ERROR_BUTTON_PIN 26
+
+
+void doSend(){
     char twilio_url[200];
     snprintf(twilio_url,
              sizeof(twilio_url),
@@ -44,7 +49,7 @@ void twilio_send_sms(void *pvParameters)
     if (err == ESP_OK)
     {
         int status_code = esp_http_client_get_status_code(client);
-        if (status_code == 201)
+        if (status_code == 200)
         {
             ESP_LOGI(TAG, "Message sent Successfully");
         }
@@ -58,8 +63,45 @@ void twilio_send_sms(void *pvParameters)
         ESP_LOGI(TAG, "Message sent Failed");
     }
     esp_http_client_cleanup(client);
-    vTaskDelete(NULL);
+
 }
+
+void sendDataTask(void *pvParameters)
+{
+    connect_wifi();
+    if(wifi_connect_status){
+        while(1){
+            doSend();
+            vTaskDelay(1000*30 / portTICK_PERIOD_MS);
+            ESP_LOGI(TAG, "Next send");
+        }
+    }
+}
+
+
+void errorTriggerTask(){
+    gpio_reset_pin(ERROR_BUTTON_PIN);
+    gpio_set_pull_mode(ERROR_BUTTON_PIN, GPIO_PULLUP_ONLY);
+    int currentValue = gpio_get_level(ERROR_BUTTON_PIN);
+    int lastValue = 0;
+
+     while(1){
+        lastValue = currentValue;
+        //Check button
+        currentValue = gpio_get_level(ERROR_BUTTON_PIN);
+        //ESP_LOGE("main","Press %d", currentValue);
+        if(lastValue == 1 && currentValue == 0){
+            vTaskDelay(20 / portTICK_PERIOD_MS);
+            currentValue = gpio_get_level(ERROR_BUTTON_PIN);
+            if(currentValue == 0){
+                //
+                esp_wifi_stop();
+            }
+        }
+     }
+}
+
+
 
 void app_main(void)
 {
@@ -70,9 +112,9 @@ void app_main(void)
 		ret = nvs_flash_init();
 	}
 	ESP_ERROR_CHECK(ret);
-	connect_wifi();
-	if (wifi_connect_status)
-	{
-		xTaskCreate(twilio_send_sms, "twilio_send_sms", 8192, NULL, 6, NULL);
-	}
+    xTaskCreate(sendDataTask, "sendDataTask", 8192, NULL, 6, NULL);
+    xTaskCreate(errorTriggerTask, "errorTriggerTask", 8192, NULL, 6, NULL);
+    while(1){
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
 }
